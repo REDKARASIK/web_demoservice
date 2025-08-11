@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: orders_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+#  app:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#    container_name: order-service
+#    ports:
+#      - "8081:8081"
+#    environment:
+#      POSTGRES_DSN: host=postgres port=5432 user=admin password=admin dbname=orders_db sslmode=disable
+#    depends_on:
+#      - postgres
+#    volumes:
+#      -  .:/app
+volumes:
+  postgres_data:
