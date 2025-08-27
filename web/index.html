@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <title>Orders Lookup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        html, body { background:#ffffff; color:#111111; }
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:32px; }
+        .card { max-width:880px; margin:0 auto; padding:16px; border:1px solid #ddd; border-radius:12px; }
+        .row { display:flex; gap:8px; margin-top:12px; }
+        input { flex:1; padding:10px; font-size:16px; border-radius:8px; border:1px solid #ccc; }
+        button { padding:10px 14px; font-size:16px; border-radius:8px; border:1px solid #333; background:#111; color:#fff; cursor:pointer; }
+        pre { background:#f7f7f8; color:#111111; padding:12px; border-radius:8px; overflow:auto; font-family: ui-monospace,SFMono-Regular,Menlo,monospace; }
+        small { color:#444; }
+        .error { color:#b00020; white-space:pre-wrap; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>Найти заказ</h2>
+    <small>Ищем по <code>order_uid</code> (пример: <code id="ex">b563feb7b2b84b6test</code>)</small>
+    <div class="row">
+        <input id="q" placeholder="Например: b563feb7b2b84b6test" autofocus />
+        <button id="btn" onclick="lookup()">Получить</button>
+    </div>
+    <div id="out" style="margin-top:12px"></div>
+</div>
+
+<script>
+    const q = document.getElementById('q');
+    const btn = document.getElementById('btn');
+    const out = document.getElementById('out');
+    document.getElementById('ex').onclick = () => { q.value = 'b563feb7b2b84b6test'; q.focus(); q.select(); };
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(); });
+
+    async function lookup() {
+        const v = q.value.trim();
+        if (!v) { out.textContent = 'Введите order_uid'; return; }
+        btn.disabled = true;
+        out.textContent = 'Загрузка...';
+        try {
+            const r = await fetch(`/api/order/${encodeURIComponent(v)}`, { headers: { 'Accept': 'application/json' } });
+            const text = await r.text();
+            if (!r.ok) {
+                out.innerHTML = `<div class="error">Ошибка: ${r.status} ${r.statusText}\n${text}</div>`;
+                return;
+            }
+            try {
+                const data = JSON.parse(text);
+                out.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch {
+                out.innerHTML = `<pre>${text}</pre>`;
+            }
+        } catch (e) {
+            out.innerHTML = `<div class="error">Сетевая ошибка: ${e}</div>`;
+        } finally {
+            btn.disabled = false;
+        }
+    }
+</script>
+</body>
+</html>
