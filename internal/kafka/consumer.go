@@ -87,10 +87,18 @@ func RunConsumer(ctx context.Context, cfg Config, handle MessageHandler) error {
 					return
 				}
 				toCommit = append(toCommit, r)
+				log.Printf("INFO: [kafka] handled topic=%s part=%d off=%d",
+					r.Topic, r.Partition, r.Offset)
 			})
 		if len(toCommit) > 0 {
 			commitCt, cancel := context.WithTimeout(ctx, 5*time.Second)
-			_ = cl.CommitRecords(commitCt, toCommit...)
+			err = cl.CommitRecords(commitCt, toCommit...)
+			if err != nil {
+				log.Printf("ERROR: [kafka] commit failed: %v", err)
+			} else {
+				log.Printf("INFO: [kafka] committed %d records (last off=%d)",
+					len(toCommit), toCommit[len(toCommit)-1].Offset)
+			}
 			cancel()
 		}
 	}

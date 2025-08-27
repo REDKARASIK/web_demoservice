@@ -29,7 +29,7 @@ func main() {
 	log.SetOutput(file)
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	log.Println("[INFO]: Started")
+	log.Println("INFO: APP started")
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -50,7 +50,7 @@ func main() {
 	orderRepo := repo.NewOrderRepo(pool)
 	handler := kafka.NewOrderHandler(orderRepo)
 	if err := kafka.RunConsumer(ctx, cfg, handler); err != nil {
-		log.Fatalf("[ERROR]: kafka consumer stopped with error: %v", err)
+		log.Fatalf("ERROR: kafka consumer stopped with error: %v", err)
 	}
 
 	log.Println("INFO: shutdown")

@@ -98,7 +98,7 @@ func (r *OrderRepo) UpsertOrder(ctx context.Context, o model.Order) error {
 		if err != nil {
 			return err
 		}
-		log.Println("[INFO]: DbPool Added and Committed")
+		log.Println("INFO: DbPool Added and Committed")
 		return nil
 	}()
 }
