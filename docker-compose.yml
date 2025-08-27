@@ -44,6 +44,17 @@ services:
       timeout: 3s
       retries: 30
 
+  topic-init:
+    image: redpandadata/redpanda:latest
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: [ "/bin/bash","-lc" ]
+    command: |
+      rpk topic create orders-events \
+        --brokers=redpanda:9092 \
+        --partitions 1 \
+        --replicas 1 || true
 
   console:
     image: redpandadata/console:latest

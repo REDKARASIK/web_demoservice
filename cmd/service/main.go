@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
+	"os/signal"
+	"syscall"
 	"web_demoservice/internal/db"
 	"web_demoservice/internal/kafka"
+	"web_demoservice/internal/repo"
 )
 
-func getenv(k, def string) string {
+func getEnv(k, def string) string {
 	if v := os.Getenv(k); v != "" {
 		return v
 	}
@@ -22,27 +24,34 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer file.Close()
+
 	log.SetOutput(file)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-	defer cancel()
-	go func() {
-		cfg := kafka.Config{
-			Brokers:  []string{getenv("KAFKA_BROKERS", "localhost:9092")},
-			GroupID:  getenv("KAFKA_GROUP_ID", "web_demoservice-group"),
-			Topics:   []string{getenv("KAFKA_TOPIC", "orders-events")},
-			ClientID: "web_demoservice-consumer",
-		}
-		if err := kafka.RunConsumer(ctx, cfg, kafka.HandleLog()); err != nil {
-			log.Fatalf("ERROR: kafka: %v", err)
-		}
-	}()
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
+	log.Println("[INFO]: Started")
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	pool, err := db.ConnectToPool(ctx)
 	if err != nil {
-		log.Printf("ERROR: failed to connect to db (%v)\n", err)
+		log.Fatalf("ERROR: failed to connect to db (%v)\n", err)
 	}
-	log.Println("INFO: connected to db")
-	fmt.Println("INFO: connected to db")
 	defer pool.Close()
-	<-ctx.Done()
+	fmt.Println("INFO: connected to db")
+
+	cfg := kafka.Config{
+		Brokers:  []string{getEnv("KAFKA_BROKERS", "localhost:9092")},
+		GroupID:  getEnv("KAFKA_GROUP_ID", "web_demoservice-group"),
+		Topics:   []string{getEnv("KAFKA_TOPIC", "orders-events")},
+		ClientID: "web_demoservice-consumer",
+	}
+	orderRepo := repo.NewOrderRepo(pool)
+	handler := kafka.NewOrderHandler(orderRepo)
+	if err := kafka.RunConsumer(ctx, cfg, handler); err != nil {
+		log.Fatalf("[ERROR]: kafka consumer stopped with error: %v", err)
+	}
+
 	log.Println("INFO: shutdown")
 }
