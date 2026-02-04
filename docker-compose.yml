@@ -1,89 +1,73 @@
 services:
-  postgres:
-    image: postgres:17
-    container_name: postgres
+  db:
+    image: postgres:17-alpine
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: orders_db
+      POSTGRES_USER: demoservice
+      POSTGRES_PASSWORD: demoservice_pass
+      POSTGRES_DB: demoservice_db
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./internal/db/init:/docker-entrypoint-initdb.d:ro
+      - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d orders_db"]
-      interval: 3s
-      timeout: 3s
-      retries: 30
+      test: [ "CMD-SHELL", "pg_isready -U demoservice -d demoservice_db" ]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  migrate:
+    image: migrate/migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations
+    command:
+      [
+        "-path=/migrations",
+        "-database=postgres://demoservice:demoservice_pass@db:5432/demoservice_db?sslmode=disable",
+        "up"
+      ]
+
 
   redpanda:
     image: redpandadata/redpanda:latest
-    container_name: redpanda
     command:
-      - redpanda
-      - start
-      - --mode=dev-container
+      - redpanda start
       - --overprovisioned
-      - --smp=1
-      - --memory=1G
-      - --reserve-memory=0M
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --node-id 0
       - --check=false
-      - --set
-      - redpanda.auto_create_topics_enabled=true
-      - --kafka-addr=PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093
-      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092,PLAINTEXT_HOST://localhost:9092
-      - --rpc-addr=0.0.0.0:33145
-      - --advertise-rpc-addr=redpanda:33145
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
     ports:
-      - "9092:9093"
-      - "9644:9644"
-    healthcheck:
-      test: [ "CMD", "bash", "-lc", "rpk cluster health --exit-when-healthy --api-urls=localhost:9644 || exit 1" ]
-      interval: 3s
-      timeout: 3s
-      retries: 30
+      - "19092:19092"
+      - "9092:9092"
 
-  topic-init:
-    image: redpandadata/redpanda:latest
-    depends_on:
-      redpanda:
-        condition: service_healthy
-    entrypoint: [ "" ] 
-    command: [ "/bin/sh","-lc","/usr/bin/rpk topic create orders-events --brokers=redpanda:9092 --partitions 1 --replicas 1 || true" ]
-
-  console:
+  redpanda-console:
     image: redpandadata/console:latest
-    container_name: redpanda-console
-    environment:
-      - KAFKA_BROKERS=redpanda:9092
-    ports:
-      - "8080:8080"
     depends_on:
-      redpanda:
-        condition: service_healthy
+      - redpanda
+    ports:
+      - "8081:8080"
+    environment:
+      KAFKA_BROKERS: redpanda:9092
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: order-service
-    ports:
-      - "8081:8081"
-    environment:
-      POSTGRES_DSN: host=postgres port=5432 user=admin password=admin dbname=orders_db sslmode=disable
-      KAFKA_BROKERS: redpanda:9092
-      KAFKA_GROUP_ID: web_demoservice-group
-      KAFKA_TOPIC: orders-events
-      HTTP_ADDR: ":8081"
+    build: .
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
       redpanda:
-        condition: service_healthy
-      topic-init:
-        condition: service_completed_successfully
+        condition: service_started
+    environment:
+      DB_DSN: "postgres://demoservice:demoservice_pass@db:5432/demoservice_db?sslmode=disable"
+    ports:
+      - "8080:8080"
     volumes:
-        - ./web:/app/web:ro
+      - ./config.toml:/app/config.toml
+
 volumes:
-  postgres_data:
+  pg_data:

@@ -1,0 +1,19 @@
+[http]
+host = "0.0.0.0"  # Позволяет принимать подключения извне (важно для Docker)
+port = 8080
+
+[db]
+host = "db"
+port = 5432
+user = "demoservice"
+password = "demoservice_pass"
+database = "demoservice_db"
+sslmode = "disable"
+max_conns = 10
+min_conns = 2
+
+[kafka]
+# Внутри Docker-сети используем адрес 'redpanda:9092'
+brokers = ["redpanda:9092"]
+topic = "orders"
+group_id = "order-processor"

@@ -1,0 +1,44 @@
+# Сборка и бинарные файлы
+bin/
+app
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Зависимости
+# Если вы используете vendor/, его можно оставить,
+# но обычно лучше скачивать зависимости внутри Docker
+vendor/
+
+# Логи и временные файлы
+*.log
+app.log
+.DS_Store
+tmp/
+
+# Инструменты разработки и IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker и инфраструктура (не нужны внутри контекста самого приложения)
+Dockerfile
+docker-compose.yml
+.dockerignore
+.git
+.gitignore
+
+# Тестовые данные и документация (если не нужны при работе приложения)
+# order_min.json — пример данных, обычно не нужен в проде
+order_min.json
+# README.md
+README.md
+
+# Покрытия тестов
+*.coverprofile
+coverage.*
