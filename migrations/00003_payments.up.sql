@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS orders.payments (
     provider VARCHAR(125) NOT NULL,
     amount NUMERIC(15, 2) NOT NULL,
     payment_dt BIGINT NOT NULL,
-    bank BIGINT REFERENCES banks.banks(id),
+    bank_id BIGINT NOT NULL REFERENCES banks.banks(id),
     delivery_cost NUMERIC(15, 2) NOT NULL,
     goods_total BIGINT NOT NULL,
     custom_fee NUMERIC(15, 2) NOT NULL
