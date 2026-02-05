@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,10 +29,13 @@ func main() {
 
 	server := &http.Server{Addr: fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port), Handler: api.Router}
 
-	if err = server.ListenAndServe(); err != nil {
-		log.Fatal(err)
-	}
+	go func() {
+		if err = server.ListenAndServe(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
+	slog.Info("Server started on ", slog.Any("addr", server.Addr), slog.Any("port", cfg.HTTP.Port))
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs

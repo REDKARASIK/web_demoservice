@@ -8,6 +8,6 @@ import (
 )
 
 func RegisterOrderRoutes(r *mux.Router, handler *handlers.OrderHandler) {
-	or := r.PathPrefix("order").Subrouter()
-	or.HandleFunc("/order/{order_id}", handler.GetOrder).Methods(http.MethodGet)
+	or := r.PathPrefix("/order").Subrouter()
+	or.HandleFunc("/{order_id}", handler.GetOrder).Methods(http.MethodGet)
 }
