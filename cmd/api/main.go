@@ -27,7 +27,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	server := &http.Server{Addr: fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port), Handler: api.Router}
+	server := &http.Server{Addr: fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port), Handler: *api.Router}
 
 	go func() {
 		if err = server.ListenAndServe(); err != nil {

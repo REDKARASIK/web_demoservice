@@ -68,6 +68,7 @@ services:
       - "8080:8080"
     volumes:
       - ./config.toml:/app/config.toml
+      - ./web:/app/web
 
 volumes:
   pg_data:

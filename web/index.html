@@ -19,9 +19,9 @@
 <body>
 <div class="card">
     <h2>Найти заказ</h2>
-    <small>Ищем по <code>order_uid</code> (пример: <code id="ex">b563feb7b2b84b6test</code>)</small>
+    <small>Ищем по <code>order_uid</code> (пример: <code id="ex">550e8400-e29b-41d4-a716-446655440000</code>)</small>
     <div class="row">
-        <input id="q" placeholder="Например: b563feb7b2b84b6test" autofocus />
+        <input id="q" placeholder="Например: 550e8400-e29b-41d4-a716-446655440000" autofocus />
         <button id="btn" onclick="lookup()">Получить</button>
     </div>
     <div id="out" style="margin-top:12px"></div>
@@ -31,7 +31,7 @@
     const q = document.getElementById('q');
     const btn = document.getElementById('btn');
     const out = document.getElementById('out');
-    document.getElementById('ex').onclick = () => { q.value = 'b563feb7b2b84b6test'; q.focus(); q.select(); };
+    document.getElementById('ex').onclick = () => { q.value = '550e8400-e29b-41d4-a716-446655440000'; q.focus(); q.select(); };
     q.addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(); });
 
     async function lookup() {
@@ -40,7 +40,7 @@
         btn.disabled = true;
         out.textContent = 'Загрузка...';
         try {
-            const r = await fetch(`/api/order/${encodeURIComponent(v)}`, { headers: { 'Accept': 'application/json' } });
+            const r = await fetch(`http://localhost:8080/api/v1/order/${encodeURIComponent(v)}`, { headers: { 'Accept': 'application/json' } });
             const text = await r.text();
             if (!r.ok) {
                 out.innerHTML = `<div class="error">Ошибка: ${r.status} ${r.statusText}\n${text}</div>`;

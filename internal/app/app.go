@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"web_demoservice/internal/config"
 	"web_demoservice/internal/infra/kafka"
 	"web_demoservice/internal/infra/postgres"
@@ -14,10 +15,11 @@ import (
 	kafka2 "web_demoservice/internal/transport/kafka"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 )
 
 type App struct {
-	Router *mux.Router
+	Router *http.Handler
 }
 
 func NewApp(ctx context.Context, config *config.Config) (*App, error) {
@@ -46,11 +48,25 @@ func NewApp(ctx context.Context, config *config.Config) (*App, error) {
 
 	// mux register
 	router := mux.NewRouter()
-	router = router.PathPrefix("/api/v1").Subrouter()
-	router.Use(middleware.PanicCover)
-	routs.RegisterOrderRoutes(router, orderHandler)
+	apiRouter := router.PathPrefix("/api/v1").Subrouter()
+	apiRouter.Use(middleware.PanicCover)
+	routs.RegisterOrderRoutes(apiRouter, orderHandler)
+
+	fileServer := http.FileServer(http.Dir("./web"))
+	router.PathPrefix("/").Handler(fileServer)
+
+	// Настройка CORS
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Accept"},
+		AllowCredentials: true,
+	})
+
+	// Оборачиваем роутер в CORS middleware
+	handler := c.Handler(router)
 
 	return &App{
-		Router: router,
+		Router: &handler,
 	}, nil
 }
