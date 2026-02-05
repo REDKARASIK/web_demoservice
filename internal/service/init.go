@@ -1,7 +1,10 @@
 package service
 
-func NewOrderService(repo OrderRepository) *OrderService {
+import "web_demoservice/internal/cache"
+
+func NewOrderService(cache *cache.Cache, repo OrderRepository) *OrderService {
 	return &OrderService{
-		repo: repo,
+		repo:  repo,
+		cache: cache,
 	}
 }

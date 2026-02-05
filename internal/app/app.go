@@ -3,7 +3,9 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
+	cache2 "web_demoservice/internal/cache"
 	"web_demoservice/internal/config"
 	"web_demoservice/internal/infra/kafka"
 	"web_demoservice/internal/infra/postgres"
@@ -35,11 +37,18 @@ func NewApp(ctx context.Context, config *config.Config) (*App, error) {
 		return nil, fmt.Errorf("failed to create kafka consumer: %w", err)
 	}
 
+	// Cache
+	cache := cache2.NewCache(config.HTTP.CacheTTL)
+	cache.StartDeleting(ctx)
+
 	// repo
 	orderRepo := repository.NewOrderPostgresRepository(pool)
 
 	// service
-	orderService := service.NewOrderService(orderRepo)
+	orderService := service.NewOrderService(cache, orderRepo)
+	if err = orderService.WarmUp(ctx); err != nil {
+		slog.Error("failed to warm up cache", slog.Any("error", err))
+	}
 
 	// handler
 	orderHandler := handlers.NewOrderHandler(orderService)

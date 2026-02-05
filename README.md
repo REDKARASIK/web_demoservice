@@ -13,6 +13,47 @@
 
 ---
 
+## Архитектура
+- Ingest: Kafka consumer (Redpanda) читает события из `orders` и преобразует DTO в доменную модель.
+- Service: `OrderService` пишет заказ в БД в транзакции и обслуживает чтение.
+- Storage: PostgreSQL с разнесением по схемам `orders` и `banks`.
+- Cache: in-memory кэш по `order_id` с TTL, прогрев из БД за последние 24 часа.
+- Transport: HTTP API `GET /api/v1/order/{order_id}` и статическая страница `web/index.html`.
+
+## Почему так
+- Kafka/Redpanda: входящие события приходят асинхронно, нужен устойчивый консьюмер.
+- Postgres: нормализованные таблицы и транзакционные upsert-операции.
+- Кэш: ускорение частых чтений, отдельный прогрев при старте.
+- Отдельные схемы `orders` и `banks`: логическое разделение доменов.
+
+## Структура БД
+Схемы: `orders`, `banks`.
+
+Таблицы:
+- `orders.orders`: основной заказ (`order_id` UUID PK).
+- `orders.delivery`: доставка, связь 1:1 по `order_id`.
+- `orders.payments`: платеж, связь 1:1 по `order_id`, ссылка на `banks.banks`.
+- `orders.items`: товары, уникальные по `rid`.
+- `orders.order_items`: связь M:N между заказами и товарами.
+- `banks.banks`: справочник банков.
+
+Связи:
+- `orders.delivery.order_id` -> `orders.orders.order_id` (1:1).
+- `orders.payments.order_id` -> `orders.orders.order_id` (1:1).
+- `orders.payments.bank_id` -> `banks.banks.id` (N:1).
+- `orders.order_items` -> `orders.orders` и `orders.items` (M:N).
+
+## Интерфейс
+- HTTP API: `GET /api/v1/order/{order_id}` возвращает JSON заказа.
+- Web UI: `web/index.html` (форма поиска `order_id`, вывод JSON).
+
+## Порты
+- `8080` — приложение (HTTP API + статика).
+- `8081` — Redpanda Console (веб-интерфейс Kafka).
+- `5432` — PostgreSQL.
+- `19092` — Kafka внешняя точка (localhost для клиентов).
+- `9092` — Kafka внутренняя точка (docker network).
+
 ##  Возможности
 - Консьюмер Kafka (через [franz-go/kgo](https://github.com/twmb/franz-go))
 - PostgreSQL (таблицы `orders`, `delivery`, `payment`, `item`)
@@ -33,4 +74,16 @@ docker compose up -d --build
 docker compose logs -f app
 
 # открыть фронт в браузере
-http://localhost:8081
+http://localhost:8080
+```
+
+## Makefile
+Короткие команды-обертки над `docker compose`:
+
+```bash
+make up        # db + миграции + kafka + app
+make down      # остановка всех сервисов
+make logs      # логи app + db
+make build     # сборка app
+make restart   # перезапуск app + tail логов
+```

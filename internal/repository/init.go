@@ -2,8 +2,8 @@ package repository
 
 import "github.com/jackc/pgx/v5/pgxpool"
 
-func NewOrderPostgresRepository(pool *pgxpool.Pool) *OrderPostgresRepository {
+func NewOrderPostgresRepository(db *pgxpool.Pool) *OrderPostgresRepository {
 	return &OrderPostgresRepository{
-		pool,
+		db: db,
 	}
 }

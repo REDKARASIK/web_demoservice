@@ -12,8 +12,9 @@ type Config struct {
 }
 
 type HTTPConfig struct {
-	Host string `toml:"host"`
-	Port int    `toml:"port"`
+	Host     string        `toml:"host"`
+	Port     int           `toml:"port"`
+	CacheTTL time.Duration `toml:"cache_ttl"`
 }
 
 type PostgresConfig struct {

@@ -216,3 +216,39 @@ func (r *OrderPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*d
 
 	return &order, nil
 }
+
+func (r *OrderPostgresRepository) GetAllLast24Hours(ctx context.Context) ([]domain.OrderWithInformation, error) {
+	// 1. Получаем список ID заказов за последние 24 часа
+	const qGetIDs = `
+		SELECT order_id 
+		FROM orders.orders 
+		WHERE date_created >= NOW() - INTERVAL '24 hours'
+	`
+	rows, err := r.db.Query(ctx, qGetIDs)
+	if err != nil {
+		return nil, fmt.Errorf("query order ids: %w", err)
+	}
+	defer rows.Close()
+
+	var orderIDs []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan order id: %w", err)
+		}
+		orderIDs = append(orderIDs, id)
+	}
+
+	// 2. Для каждого ID вызываем GetByID (используем существующую логику сборки заказа)
+	orders := make([]domain.OrderWithInformation, 0, len(orderIDs))
+	for _, id := range orderIDs {
+		order, err := r.GetByID(ctx, id)
+		if err != nil {
+			// Если один заказ не собрался, логируем и идем дальше
+			continue
+		}
+		orders = append(orders, *order)
+	}
+
+	return orders, nil
+}
