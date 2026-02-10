@@ -30,14 +30,14 @@ func NewCache(ttl time.Duration) *Cache {
 	}
 }
 
-func (c *Cache) Set(order domain.OrderWithInformation) {
+func (c *Cache) Set(id uuid.UUID, order domain.OrderWithInformation) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	entity := cacheEntity{
 		order: order,
 		time:  time.Now(),
 	}
-	c.cache[order.Order.ID] = entity
+	c.cache[id] = entity
 }
 
 func (c *Cache) Get(id uuid.UUID) (*domain.OrderWithInformation, bool) {
@@ -60,6 +60,9 @@ func (c *Cache) StartDeleting(ctx context.Context) {
 	go func() {
 		for {
 			select {
+			case <-ctx.Done():
+				c.timer.Stop()
+				return
 			case <-c.done:
 				c.timer.Stop()
 				return
@@ -71,9 +74,6 @@ func (c *Cache) StartDeleting(ctx context.Context) {
 					}
 				}
 				c.mu.Unlock()
-			case <-ctx.Done():
-				c.timer.Stop()
-				return
 			}
 		}
 	}()

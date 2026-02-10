@@ -2,8 +2,25 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"time"
+
+	"github.com/BurntSushi/toml"
 )
+
+func NewConfig(path string) (*Config, error) {
+	_, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("config file %s does not exist; err: %w", path, err)
+	}
+
+	var cfg Config
+	if _, err = toml.DecodeFile(path, &cfg); err != nil {
+		return nil, fmt.Errorf("error parsing config file %s; err: %w", path, err)
+	}
+
+	return &cfg, nil
+}
 
 type Config struct {
 	HTTP  HTTPConfig     `toml:"http"`
@@ -25,9 +42,10 @@ type PostgresConfig struct {
 	Database string `toml:"database"`
 	SSLMode  string `toml:"sslmode"`
 
-	MaxConns        int32         `toml:"max_conns"`
-	MinConns        int32         `toml:"min_conns"`
-	MaxConnLifetime time.Duration `toml:"max_conn_lifetime"`
+	MaxConns          int32         `toml:"max_conns"`
+	MinConns          int32         `toml:"min_conns"`
+	MaxConnLifetime   time.Duration `toml:"max_conn_lifetime"`
+	HealthCheckPeriod time.Duration `toml:"health_check_period"`
 }
 
 func (p *PostgresConfig) DSN() string {

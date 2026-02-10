@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/twmb/franz-go/pkg/kgo"
 )
@@ -16,7 +17,11 @@ func NewConsumer(brokers []string, groupID, topic string) (*Consumer, error) {
 		kgo.ConsumerGroup(groupID),
 		kgo.ConsumeTopics(topic))
 
-	return &Consumer{client: client}, err
+	if err != nil {
+		return nil, fmt.Errorf("new client: %w", err)
+	}
+
+	return &Consumer{client: client}, nil
 }
 
 func (c *Consumer) Fetch(ctx context.Context) kgo.Fetches {

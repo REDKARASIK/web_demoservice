@@ -12,6 +12,7 @@ database = "demoservice_db"
 sslmode = "disable"
 max_conns = 10
 min_conns = 2
+health_check_period = "1m"
 
 [kafka]
 # Внутри Docker-сети используем адрес 'redpanda:9092'

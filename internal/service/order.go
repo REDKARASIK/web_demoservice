@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"web_demoservice/internal/cache"
 	"web_demoservice/internal/domain"
+	"web_demoservice/internal/interfaces"
 
 	"github.com/google/uuid"
 )
@@ -16,9 +16,16 @@ type OrderRepository interface {
 	GetAllLast24Hours(ctx context.Context) ([]domain.OrderWithInformation, error)
 }
 
+func NewOrderService(repo OrderRepository, cache interfaces.Cache[uuid.UUID, domain.OrderWithInformation]) *OrderService {
+	return &OrderService{
+		repo:  repo,
+		cache: cache,
+	}
+}
+
 type OrderService struct {
+	cache interfaces.Cache[uuid.UUID, domain.OrderWithInformation]
 	repo  OrderRepository
-	cache *cache.Cache
 }
 
 func (s *OrderService) CreateOrder(ctx context.Context, order domain.OrderWithInformation) error {
@@ -40,7 +47,7 @@ func (s *OrderService) GetOrder(ctx context.Context, id uuid.UUID) (*domain.Orde
 		return nil, err
 	}
 
-	s.cache.Set(*order)
+	s.cache.Set((*order).Order.ID, *order)
 	return order, nil
 }
 
@@ -51,7 +58,7 @@ func (s *OrderService) WarmUp(ctx context.Context) error {
 	}
 
 	for _, ord := range orders {
-		s.cache.Set(ord)
+		s.cache.Set(ord.ID, ord)
 	}
 
 	slog.Info("Cache warm-up finished", slog.Int("count", len(orders)))

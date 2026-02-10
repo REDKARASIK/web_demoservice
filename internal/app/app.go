@@ -26,7 +26,7 @@ type App struct {
 
 func NewApp(ctx context.Context, config *config.Config) (*App, error) {
 	// postgres
-	pool, err := postgres.NewPostgresPool(config.DB)
+	pool, err := postgres.NewPostgresPool(config.DB, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create postgres pool: %w", err)
 	}
@@ -45,7 +45,7 @@ func NewApp(ctx context.Context, config *config.Config) (*App, error) {
 	orderRepo := repository.NewOrderPostgresRepository(pool)
 
 	// service
-	orderService := service.NewOrderService(cache, orderRepo)
+	orderService := service.NewOrderService(orderRepo, cache)
 	if err = orderService.WarmUp(ctx); err != nil {
 		slog.Error("failed to warm up cache", slog.Any("error", err))
 	}

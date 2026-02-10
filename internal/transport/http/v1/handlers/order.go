@@ -21,6 +21,12 @@ type OrderHandler struct {
 	service OrderService
 }
 
+func NewOrderHandler(service OrderService) *OrderHandler {
+	return &OrderHandler{
+		service: service,
+	}
+}
+
 func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	orderID := mux.Vars(r)["order_id"]
 	if orderID == "" {
@@ -36,13 +42,13 @@ func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 
 	order, err := h.service.GetOrder(r.Context(), uuid)
 	if err != nil {
-		if errors.Is(pgx.ErrNoRows, err) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "order not found", http.StatusNotFound)
 			return
-		} else {
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
 		}
+
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
 	}
 
 	orderDTO := dto.MapToOrderDTO(order)

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"web_demoservice/internal/domain"
 
@@ -9,6 +10,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+func NewOrderPostgresRepository(db *pgxpool.Pool) *OrderPostgresRepository {
+	return &OrderPostgresRepository{
+		db: db,
+	}
+}
 
 type OrderPostgresRepository struct {
 	db *pgxpool.Pool
@@ -74,7 +81,7 @@ func (r *OrderPostgresRepository) Create(ctx context.Context, order domain.Order
 
 	err = tx.QueryRow(ctx, "SELECT id FROM banks.banks WHERE name = $1", order.Payment.Bank.Name).Scan(&bankID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			err = tx.QueryRow(ctx, "INSERT INTO banks.banks (name) VALUES ($1) RETURNING id", order.Payment.Bank.Name).Scan(&bankID)
 			if err != nil {
 				return fmt.Errorf("insert bank: %w", err)
@@ -149,7 +156,7 @@ func (r *OrderPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*d
 		&order.Order.ShardKey, &order.Order.SmID, &order.Order.DateCreated, &order.Order.OofShard,
 	)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("order not found: %w", err)
 		}
 		return nil, fmt.Errorf("query order: %w", err)
@@ -184,7 +191,7 @@ func (r *OrderPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*d
 		&order.Payment.DeliveryCost, &order.Payment.GoodsTotal, &order.Payment.CustomFee,
 		&order.Payment.Bank.ID, &order.Payment.Bank.Name,
 	)
-	if err != nil && err != pgx.ErrNoRows {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("query payment: %w", err)
 	}
 
