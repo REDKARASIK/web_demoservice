@@ -47,7 +47,7 @@ func (s *OrderService) GetOrder(ctx context.Context, id uuid.UUID) (*domain.Orde
 		return nil, err
 	}
 
-	s.cache.Set((*order).Order.ID, *order)
+	s.cache.Set((*order).ID, *order)
 	return order, nil
 }
 

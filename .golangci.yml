@@ -1,0 +1,20 @@
+version: "2"
+
+run:
+  timeout: 2m
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - unconvert
+
+formatters:
+  enable:
+    - goimports
+
+formatters-settings:
+  goimports:
+    local-prefixes: web_demoservice

@@ -27,3 +27,6 @@ down:
 
 logs:
 	$(DC) logs -f app db
+
+lint:
+	golangci-lint run ./...

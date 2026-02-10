@@ -47,9 +47,9 @@ func (r *OrderPostgresRepository) Create(ctx context.Context, order domain.Order
 		ON CONFLICT (order_id) DO NOTHING;
 	`
 	_, err = tx.Exec(ctx, qCreateOrder,
-		order.Order.ID, order.Order.TrackNumber, order.Order.Entry, order.Order.Locale,
-		order.Order.InternalSignature, order.Order.CustomerID, order.Order.DeliveryService,
-		order.Order.ShardKey, order.Order.SmID, order.Order.DateCreated, order.Order.OofShard,
+		order.ID, order.TrackNumber, order.Entry, order.Locale,
+		order.InternalSignature, order.CustomerID, order.DeliveryService,
+		order.ShardKey, order.SmID, order.DateCreated, order.OofShard,
 	)
 	if err != nil {
 		return fmt.Errorf("insert order: %w", err)
@@ -63,7 +63,7 @@ func (r *OrderPostgresRepository) Create(ctx context.Context, order domain.Order
 		ON CONFLICT (order_id) DO NOTHING;
 	`
 	_, err = tx.Exec(ctx, qCreateDelivery,
-		order.Order.ID, order.Delivery.Name, order.Delivery.Phone, order.Delivery.Zip,
+		order.ID, order.Delivery.Name, order.Delivery.Phone, order.Delivery.Zip,
 		order.Delivery.City, order.Delivery.Address, order.Delivery.Region, order.Delivery.Email,
 	)
 	if err != nil {
@@ -72,13 +72,6 @@ func (r *OrderPostgresRepository) Create(ctx context.Context, order domain.Order
 
 	// 3. Обработка банка (Получаем ID по имени или создаем новый)
 	var bankID int64
-	const qUpsertBank = `
-		INSERT INTO banks.banks (name) 
-		VALUES ($1) 
-		ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
-		RETURNING id;
-	`
-
 	err = tx.QueryRow(ctx, "SELECT id FROM banks.banks WHERE name = $1", order.Payment.Bank.Name).Scan(&bankID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -100,7 +93,7 @@ func (r *OrderPostgresRepository) Create(ctx context.Context, order domain.Order
 		ON CONFLICT (transaction) DO NOTHING;
 	`
 	_, err = tx.Exec(ctx, qCreatePayment,
-		order.Order.ID, order.Payment.Transaction, order.Payment.RequestID, order.Payment.Currency,
+		order.ID, order.Payment.Transaction, order.Payment.RequestID, order.Payment.Currency,
 		order.Payment.Provider, order.Payment.Amount, order.Payment.PaymentDt, bankID,
 		order.Payment.DeliveryCost, order.Payment.GoodsTotal, order.Payment.CustomFee,
 	)
@@ -132,7 +125,7 @@ func (r *OrderPostgresRepository) Create(ctx context.Context, order domain.Order
 			return fmt.Errorf("insert item %s: %w", item.RID, err)
 		}
 
-		_, err = tx.Exec(ctx, qCreateOrderItem, order.Order.ID, itemID)
+		_, err = tx.Exec(ctx, qCreateOrderItem, order.ID, itemID)
 		if err != nil {
 			return fmt.Errorf("link item to order: %w", err)
 		}
@@ -151,9 +144,9 @@ func (r *OrderPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*d
 	`
 	var order domain.OrderWithInformation
 	err := r.db.QueryRow(ctx, qGetOrder, id).Scan(
-		&order.Order.ID, &order.Order.TrackNumber, &order.Order.Entry, &order.Order.Locale,
-		&order.Order.InternalSignature, &order.Order.CustomerID, &order.Order.DeliveryService,
-		&order.Order.ShardKey, &order.Order.SmID, &order.Order.DateCreated, &order.Order.OofShard,
+		&order.ID, &order.TrackNumber, &order.Entry, &order.Locale,
+		&order.InternalSignature, &order.CustomerID, &order.DeliveryService,
+		&order.ShardKey, &order.SmID, &order.DateCreated, &order.OofShard,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -172,7 +165,7 @@ func (r *OrderPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*d
 		&order.Delivery.Name, &order.Delivery.Phone, &order.Delivery.Zip,
 		&order.Delivery.City, &order.Delivery.Address, &order.Delivery.Region, &order.Delivery.Email,
 	)
-	if err != nil && err != pgx.ErrNoRows {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("query delivery: %w", err)
 	}
 

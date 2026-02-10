@@ -86,4 +86,16 @@ make down      # остановка всех сервисов
 make logs      # логи app + db
 make build     # сборка app
 make restart   # перезапуск app + tail логов
+make lint      # статический анализ (golangci-lint)
+```
+
+## Линтер и форматирование
+Линтер: `golangci-lint`, настройки в `.golangci.yml`.
+
+```bash
+# линт
+make lint
+
+# форматирование (goimports)
+golangci-lint fmt
 ```

@@ -22,17 +22,17 @@ func MapToOrderDTO(order *domain.OrderWithInformation) OrderWithInformationDTO {
 	}
 
 	return OrderWithInformationDTO{
-		OrderUID:          order.Order.ID.String(),
-		TrackNumber:       order.Order.TrackNumber,
-		Entry:             order.Order.Entry,
-		Locale:            order.Order.Locale,
-		InternalSignature: getValue(order.Order.InternalSignature),
-		CustomerID:        order.Order.CustomerID,
-		DeliveryService:   getValue(order.Order.DeliveryService),
-		ShardKey:          order.Order.ShardKey,
-		SmID:              getValue(order.Order.SmID),
-		DateCreated:       order.Order.DateCreated,
-		OofShard:          order.Order.OofShard,
+		OrderUID:          order.ID.String(),
+		TrackNumber:       order.TrackNumber,
+		Entry:             order.Entry,
+		Locale:            order.Locale,
+		InternalSignature: getValue(order.InternalSignature),
+		CustomerID:        order.CustomerID,
+		DeliveryService:   getValue(order.DeliveryService),
+		ShardKey:          order.ShardKey,
+		SmID:              getValue(order.SmID),
+		DateCreated:       order.DateCreated,
+		OofShard:          order.OofShard,
 		Delivery: DeliveryDTO{
 			Name:    order.Delivery.Name,
 			Phone:   order.Delivery.Phone,
