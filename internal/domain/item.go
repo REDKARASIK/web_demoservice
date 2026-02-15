@@ -2,7 +2,7 @@ package domain
 
 type Item struct {
 	ID          int64   `db:"id"`
-	ChrtID      *int64  `db:"chart_id"`
+	ChrtID      *int64  `db:"chart_id"` // can be NULL
 	TrackNumber string  `db:"track_number"`
 	Price       float64 `db:"price"`
 	RID         string  `db:"rid"`

@@ -36,6 +36,10 @@ func NewApp(ctx context.Context, config *config.Config) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka consumer: %w", err)
 	}
+	dlqProducer, err := kafka.NewProducer(config.Kafka.Brokers, config.Kafka.DLQTopic)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kafka dlq producer: %w", err)
+	}
 
 	// Cache
 	cache := cache2.NewCache(config.HTTP.CacheTTL)
@@ -52,7 +56,7 @@ func NewApp(ctx context.Context, config *config.Config) (*App, error) {
 
 	// handler
 	orderHandler := handlers.NewOrderHandler(orderService)
-	consumerHandler := kafka2.NewOrderHandler(consumer, orderService)
+	consumerHandler := kafka2.NewOrderHandler(consumer, dlqProducer, orderService)
 	go consumerHandler.Run(ctx)
 
 	// mux register

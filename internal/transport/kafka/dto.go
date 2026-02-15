@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"fmt"
 	"time"
 	"web_demoservice/internal/domain"
 
@@ -15,28 +16,28 @@ type OrderKafkaDTO struct {
 	Payment           PaymentDTO  `json:"payment"`
 	Items             []ItemDTO   `json:"items"`
 	Locale            string      `json:"locale"`
-	InternalSignature string      `json:"internal_signature"`
+	InternalSignature *string     `json:"internal_signature,omitempty"`
 	CustomerID        string      `json:"customer_id"`
-	DeliveryService   string      `json:"delivery_service"`
+	DeliveryService   *string     `json:"delivery_service,omitempty"`
 	ShardKey          string      `json:"shardkey"`
-	SmID              int64       `json:"sm_id"`
+	SmID              *int64      `json:"sm_id,omitempty"`
 	DateCreated       time.Time   `json:"date_created"`
 	OofShard          string      `json:"oof_shard"`
 }
 
 type DeliveryDTO struct {
-	Name    string `json:"name"`
-	Phone   string `json:"phone"`
-	Zip     string `json:"zip"`
-	City    string `json:"city"`
-	Address string `json:"address"`
-	Region  string `json:"region"`
-	Email   string `json:"email"`
+	Name    string  `json:"name"`
+	Phone   string  `json:"phone"`
+	Zip     string  `json:"zip"`
+	City    string  `json:"city"`
+	Address string  `json:"address"`
+	Region  *string `json:"region,omitempty"`
+	Email   string  `json:"email"`
 }
 
 type PaymentDTO struct {
 	Transaction  string  `json:"transaction"`
-	RequestID    string  `json:"request_id"`
+	RequestID    *string `json:"request_id,omitempty"`
 	Currency     string  `json:"currency"`
 	Provider     string  `json:"provider"`
 	Amount       float64 `json:"amount"`
@@ -48,13 +49,13 @@ type PaymentDTO struct {
 }
 
 type ItemDTO struct {
-	ChrtID      int64   `json:"chrt_id"`
+	ChrtID      *int64  `json:"chrt_id,omitempty"`
 	TrackNumber string  `json:"track_number"`
 	Price       float64 `json:"price"`
 	RID         string  `json:"rid"`
 	Name        string  `json:"name"`
-	Sale        int64   `json:"sale"`
-	Size        string  `json:"size"`
+	Sale        *int64  `json:"sale,omitempty"`
+	Size        *string `json:"size,omitempty"`
 	TotalPrice  float64 `json:"total_price"`
 	NmID        int64   `json:"nm_id"`
 	Brand       string  `json:"brand"`
@@ -64,19 +65,19 @@ type ItemDTO struct {
 func (d *OrderKafkaDTO) ToDomain() (domain.OrderWithInformation, error) {
 	uid, err := uuid.Parse(d.OrderUID)
 	if err != nil {
-		return domain.OrderWithInformation{}, err
+		return domain.OrderWithInformation{}, fmt.Errorf("parse order_uid: %w", err)
 	}
 
 	items := make([]domain.Item, len(d.Items))
 	for i, it := range d.Items {
 		items[i] = domain.Item{
-			ChrtID:      &it.ChrtID,
+			ChrtID:      it.ChrtID,
 			TrackNumber: it.TrackNumber,
 			Price:       it.Price,
 			RID:         it.RID,
 			Name:        it.Name,
-			Sale:        &it.Sale,
-			Size:        &it.Size,
+			Sale:        it.Sale,
+			Size:        it.Size,
 			TotalPrice:  it.TotalPrice,
 			NmID:        it.NmID,
 			Brand:       it.Brand,
@@ -91,11 +92,11 @@ func (d *OrderKafkaDTO) ToDomain() (domain.OrderWithInformation, error) {
 				TrackNumber:       d.TrackNumber,
 				Entry:             d.Entry,
 				Locale:            d.Locale,
-				InternalSignature: &d.InternalSignature,
+				InternalSignature: d.InternalSignature,
 				CustomerID:        d.CustomerID,
-				DeliveryService:   &d.DeliveryService,
+				DeliveryService:   d.DeliveryService,
 				ShardKey:          d.ShardKey,
-				SmID:              &d.SmID,
+				SmID:              d.SmID,
 				DateCreated:       d.DateCreated,
 				OofShard:          d.OofShard,
 			},
@@ -107,13 +108,13 @@ func (d *OrderKafkaDTO) ToDomain() (domain.OrderWithInformation, error) {
 			Zip:     d.Delivery.Zip,
 			City:    d.Delivery.City,
 			Address: d.Delivery.Address,
-			Region:  &d.Delivery.Region,
+			Region:  d.Delivery.Region,
 			Email:   d.Delivery.Email,
 		},
 		Payment: domain.PaymentWithBank{
 			Payment: domain.Payment{
 				Transaction:  d.Payment.Transaction,
-				RequestID:    &d.Payment.RequestID,
+				RequestID:    d.Payment.RequestID,
 				Currency:     d.Payment.Currency,
 				Provider:     d.Payment.Provider,
 				Amount:       d.Payment.Amount,

@@ -19,3 +19,4 @@ health_check_period = "1m"
 brokers = ["redpanda:9092"]
 topic = "orders"
 group_id = "order-processor"
+dlq_topic = "orders_dlq"

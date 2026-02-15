@@ -56,7 +56,8 @@ func (p *PostgresConfig) DSN() string {
 }
 
 type KafkaConfig struct {
-	Brokers []string `toml:"brokers"`
-	Topic   string   `toml:"topic"`
-	GroupID string   `toml:"group_id"`
+	Brokers  []string `toml:"brokers"`
+	Topic    string   `toml:"topic"`
+	GroupID  string   `toml:"group_id"`
+	DLQTopic string   `toml:"dlq_topic"`
 }

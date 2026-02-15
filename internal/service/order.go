@@ -31,7 +31,7 @@ type OrderService struct {
 func (s *OrderService) CreateOrder(ctx context.Context, order domain.OrderWithInformation) error {
 	err := s.repo.Create(ctx, order)
 	if err != nil {
-		return err
+		return fmt.Errorf("create order: %w", err)
 	}
 
 	return nil
@@ -44,7 +44,7 @@ func (s *OrderService) GetOrder(ctx context.Context, id uuid.UUID) (*domain.Orde
 
 	order, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get order: %w", err)
 	}
 
 	s.cache.Set((*order).ID, *order)
