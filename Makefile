@@ -3,14 +3,15 @@ DC = docker compose
 db-up:
 	$(DC) up -d db
 
-migrate:
+migrate: db-up
 	$(DC) run --rm migrate
 
 kafka-up:
 	$(DC) up -d redpanda
+	$(DC) up -d redpanda-init
 	$(DC) up -d redpanda-console
 
-app-up:
+app-up: db-up migrate kafka-up
 	$(DC) up -d app
 
 build:

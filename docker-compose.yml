@@ -46,6 +46,15 @@ services:
       - "19092:19092"
       - "9092:9092"
 
+  redpanda-init:
+    image: redpandadata/redpanda:latest
+    depends_on:
+      - redpanda
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "until rpk topic list -X brokers=redpanda:9092 >/dev/null 2>&1; do sleep 1; done;
+      rpk topic create orders orders_dlq -p 1 -r 1 -X brokers=redpanda:9092 || true"
+
   redpanda-console:
     image: redpandadata/console:latest
     depends_on:
