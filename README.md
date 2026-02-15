@@ -14,7 +14,7 @@
 ---
 
 ## Архитектура
-- Ingest: Kafka consumer (Redpanda) читает события из `orders` и преобразует DTO в доменную модель.
+- Ingest: Kafka consumer (Redpanda) читает события из `orders`, валидирует вход и преобразует DTO в доменную модель. Ошибки уходят в DLQ.
 - Service: `OrderService` пишет заказ в БД в транзакции и обслуживает чтение.
 - Storage: PostgreSQL с разнесением по схемам `orders` и `banks`.
 - Cache: in-memory кэш по `order_id` с TTL, прогрев из БД за последние 24 часа.
@@ -59,6 +59,8 @@
 - PostgreSQL (таблицы `orders`, `delivery`, `payment`, `item`)
 - Upsert заказов и связанных сущностей
 - Кэш заказов в памяти (по `order_uid`)
+- DLQ для невалидных/ошибочных сообщений (`orders_dlq`)
+- Генератор тестовых сообщений (валидных и невалидных) `cmd/producer`
 - HTTP API для получения заказа
 - Простой фронтенд (`web/index.html`)
 
@@ -75,6 +77,26 @@ docker compose logs -f app
 
 # открыть фронт в браузере
 http://localhost:8080
+```
+
+## Kafka topics
+- Основной: `orders`
+- DLQ: `orders_dlq` (создаётся `redpanda-init` при старте)
+
+## Producer (генерация сообщений)
+```bash
+go run ./cmd/producer --brokers=localhost:19092 --topic=orders --count=100 --invalid-rate=0.3
+```
+Если запускаешь внутри docker‑сети, используй `--brokers=redpanda:9092`.
+
+## Тесты
+```bash
+# unit
+go test ./...
+
+# integration (нужна поднятая БД + миграции)
+TEST_DB_DSN="postgres://demoservice:demoservice_pass@localhost:5432/demoservice_db?sslmode=disable" \
+go test -tags=integration ./internal/repository -run TestOrderPostgresRepository_CreateAndGet
 ```
 
 ## Makefile

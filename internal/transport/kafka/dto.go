@@ -1,7 +1,9 @@
 package kafka
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 	"web_demoservice/internal/domain"
 
@@ -126,4 +128,109 @@ func (d *OrderKafkaDTO) ToDomain() (domain.OrderWithInformation, error) {
 			Bank: domain.Bank{Name: d.Payment.Bank},
 		},
 	}, nil
+}
+
+func (d *OrderKafkaDTO) Validate() error {
+	var errs []error
+
+	if isBlank(d.OrderUID) {
+		errs = append(errs, errors.New("order_uid is required"))
+	} else if _, err := uuid.Parse(d.OrderUID); err != nil {
+		errs = append(errs, fmt.Errorf("order_uid invalid: %w", err))
+	}
+
+	if isBlank(d.TrackNumber) {
+		errs = append(errs, errors.New("track_number is required"))
+	}
+	if isBlank(d.Entry) {
+		errs = append(errs, errors.New("entry is required"))
+	}
+	if isBlank(d.Locale) {
+		errs = append(errs, errors.New("locale is required"))
+	}
+	if isBlank(d.CustomerID) {
+		errs = append(errs, errors.New("customer_id is required"))
+	}
+	if isBlank(d.ShardKey) {
+		errs = append(errs, errors.New("shardkey is required"))
+	}
+	if isBlank(d.OofShard) {
+		errs = append(errs, errors.New("oof_shard is required"))
+	}
+	if d.DateCreated.IsZero() {
+		errs = append(errs, errors.New("date_created is required"))
+	}
+
+	if isBlank(d.Delivery.Name) {
+		errs = append(errs, errors.New("delivery.name is required"))
+	}
+	if isBlank(d.Delivery.Phone) {
+		errs = append(errs, errors.New("delivery.phone is required"))
+	}
+	if isBlank(d.Delivery.Zip) {
+		errs = append(errs, errors.New("delivery.zip is required"))
+	}
+	if isBlank(d.Delivery.City) {
+		errs = append(errs, errors.New("delivery.city is required"))
+	}
+	if isBlank(d.Delivery.Address) {
+		errs = append(errs, errors.New("delivery.address is required"))
+	}
+	if isBlank(d.Delivery.Email) {
+		errs = append(errs, errors.New("delivery.email is required"))
+	}
+
+	if isBlank(d.Payment.Transaction) {
+		errs = append(errs, errors.New("payment.transaction is required"))
+	}
+	if isBlank(d.Payment.Currency) {
+		errs = append(errs, errors.New("payment.currency is required"))
+	}
+	if isBlank(d.Payment.Provider) {
+		errs = append(errs, errors.New("payment.provider is required"))
+	}
+	if isBlank(d.Payment.Bank) {
+		errs = append(errs, errors.New("payment.bank is required"))
+	}
+	if d.Payment.PaymentDt <= 0 {
+		errs = append(errs, errors.New("payment.payment_dt must be positive"))
+	}
+	if d.Payment.Amount < 0 || d.Payment.DeliveryCost < 0 || d.Payment.GoodsTotal < 0 || d.Payment.CustomFee < 0 {
+		errs = append(errs, errors.New("payment values must be non-negative"))
+	}
+
+	if len(d.Items) == 0 {
+		errs = append(errs, errors.New("items must not be empty"))
+	}
+	for i, it := range d.Items {
+		prefix := fmt.Sprintf("items[%d].", i)
+		if isBlank(it.TrackNumber) {
+			errs = append(errs, errors.New(prefix+"track_number is required"))
+		}
+		if isBlank(it.RID) {
+			errs = append(errs, errors.New(prefix+"rid is required"))
+		}
+		if isBlank(it.Name) {
+			errs = append(errs, errors.New(prefix+"name is required"))
+		}
+		if isBlank(it.Brand) {
+			errs = append(errs, errors.New(prefix+"brand is required"))
+		}
+		if it.NmID <= 0 {
+			errs = append(errs, errors.New(prefix+"nm_id must be positive"))
+		}
+		if it.Price < 0 || it.TotalPrice < 0 {
+			errs = append(errs, errors.New(prefix+"price/total_price must be non-negative"))
+		}
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	return nil
+}
+
+func isBlank(s string) bool {
+	return strings.TrimSpace(s) == ""
 }

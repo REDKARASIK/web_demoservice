@@ -48,6 +48,13 @@ func (h *OrderHandler) Run(ctx context.Context) {
 				return
 			}
 
+			if err := kafkaDTO.Validate(); err != nil {
+				wrappedErr := fmt.Errorf("validate kafka dto: %w", err)
+				slog.Error("failed to validate kafka dto", slog.Any("error", wrappedErr))
+				h.sendToDLQ(ctx, record, wrappedErr)
+				return
+			}
+
 			order, err := kafkaDTO.ToDomain()
 			if err != nil {
 				wrappedErr := fmt.Errorf("map kafka dto to domain: %w", err)
