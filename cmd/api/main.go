@@ -9,8 +9,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 	"web_demoservice/internal/app"
 	"web_demoservice/internal/config"
+	"web_demoservice/internal/telemetry"
 )
 
 func main() {
@@ -21,6 +23,18 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	shutdown, err := telemetry.SetupTracing(ctx, cfg.Telemetry)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		ctxShutdown, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelShutdown()
+		if err := shutdown(ctxShutdown); err != nil {
+			slog.Error("failed to shutdown tracing", slog.Any("error", err))
+		}
+	}()
 
 	api, err := app.NewApp(ctx, cfg)
 	if err != nil {

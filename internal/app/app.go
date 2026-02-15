@@ -12,12 +12,14 @@ import (
 	"web_demoservice/internal/middleware"
 	"web_demoservice/internal/repository"
 	"web_demoservice/internal/service"
+	"web_demoservice/internal/telemetry"
 	"web_demoservice/internal/transport/http/v1/handlers"
 	routs "web_demoservice/internal/transport/http/v1/router"
 	kafka2 "web_demoservice/internal/transport/kafka"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type App struct {
@@ -61,6 +63,17 @@ func NewApp(ctx context.Context, config *config.Config) (*App, error) {
 
 	// mux register
 	router := mux.NewRouter()
+	if config.Telemetry.Enabled {
+		router.Use(otelhttp.NewMiddleware("http_server"))
+	}
+	if config.Metrics.Enabled {
+		router.Use(telemetry.MetricsMiddleware)
+		metricsPath := config.Metrics.Path
+		if metricsPath == "" {
+			metricsPath = "/metrics"
+		}
+		router.Handle(metricsPath, telemetry.MetricsHandler())
+	}
 	apiRouter := router.PathPrefix("/api/v1").Subrouter()
 	apiRouter.Use(middleware.PanicCover)
 	routs.RegisterOrderRoutes(apiRouter, orderHandler)

@@ -14,6 +14,9 @@ kafka-up:
 app-up: db-up migrate kafka-up
 	$(DC) up -d app
 
+obs-up:
+	$(DC) up -d prometheus
+
 build:
 	$(DC) build app
 
@@ -21,7 +24,7 @@ restart:
 	$(DC) restart app
 	$(DC) logs -f app
 
-up: db-up migrate kafka-up app-up
+up: db-up migrate kafka-up app-up obs-up
 
 down:
 	$(DC) down

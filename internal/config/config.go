@@ -23,9 +23,11 @@ func NewConfig(path string) (*Config, error) {
 }
 
 type Config struct {
-	HTTP  HTTPConfig     `toml:"http"`
-	DB    PostgresConfig `toml:"db"`
-	Kafka KafkaConfig    `toml:"kafka"`
+	HTTP      HTTPConfig      `toml:"http"`
+	DB        PostgresConfig  `toml:"db"`
+	Kafka     KafkaConfig     `toml:"kafka"`
+	Telemetry TelemetryConfig `toml:"telemetry"`
+	Metrics   MetricsConfig   `toml:"metrics"`
 }
 
 type HTTPConfig struct {
@@ -60,4 +62,17 @@ type KafkaConfig struct {
 	Topic    string   `toml:"topic"`
 	GroupID  string   `toml:"group_id"`
 	DLQTopic string   `toml:"dlq_topic"`
+}
+
+type TelemetryConfig struct {
+	Enabled      bool    `toml:"enabled"`
+	ServiceName  string  `toml:"service_name"`
+	OTLPEndpoint string  `toml:"otlp_endpoint"`
+	OTLPInsecure bool    `toml:"otlp_insecure"`
+	SampleRatio  float64 `toml:"sample_ratio"`
+}
+
+type MetricsConfig struct {
+	Enabled bool   `toml:"enabled"`
+	Path    string `toml:"path"`
 }

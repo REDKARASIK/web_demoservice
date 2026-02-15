@@ -64,6 +64,16 @@ services:
     environment:
       KAFKA_BROKERS: redpanda:9092
 
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    depends_on:
+      - app
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
   app:
     build: .
     depends_on:
@@ -81,3 +91,4 @@ services:
 
 volumes:
   pg_data:
+  prometheus_data:

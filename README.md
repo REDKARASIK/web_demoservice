@@ -8,7 +8,7 @@
 Мини-сервис для обработки заказов: читает события из Kafka (Redpanda), сохраняет их в PostgreSQL и отдаёт через HTTP API и простую веб-страницу.
 
 <p align="center">
-  <img src="web/img.png" alt="UI Screenshot" width="600"/>
+  <img src="web/img.png" alt="UI Screenshot" width="546"/>
 </p>
 
 ---
@@ -63,6 +63,7 @@
 - Генератор тестовых сообщений (валидных и невалидных) `cmd/producer`
 - HTTP API для получения заказа
 - Простой фронтенд (`web/index.html`)
+- Трейсы (OpenTelemetry) и метрики (Prometheus `/metrics`)
 
 ---
 
@@ -89,6 +90,25 @@ go run ./cmd/producer --brokers=localhost:19092 --topic=orders --count=100 --inv
 ```
 Если запускаешь внутри docker‑сети, используй `--brokers=redpanda:9092`.
 
+## Observability
+### Метрики
+По умолчанию доступны по пути `/metrics`.
+Если используешь docker compose, Prometheus поднимется на `http://localhost:9090`
+и уже настроен на скрейп `app:8080/metrics`. Пример запроса в UI:
+`http_requests_total`.
+
+### Трейсы (OpenTelemetry)
+Включаются через конфиг:
+```toml
+[telemetry]
+enabled = true
+service_name = "web_demoservice"
+otlp_endpoint = "localhost:4317"
+otlp_insecure = true
+sample_ratio = 1.0
+```
+Если `enabled=false`, трейсинг отключён.
+
 ## Тесты
 ```bash
 # unit
@@ -103,12 +123,13 @@ go test -tags=integration ./internal/repository -run TestOrderPostgresRepository
 Короткие команды-обертки над `docker compose`:
 
 ```bash
-make up        # db + миграции + kafka + app
+make up        # db + миграции + kafka + app + prometheus
 make down      # остановка всех сервисов
 make logs      # логи app + db
 make build     # сборка app
 make restart   # перезапуск app + tail логов
 make lint      # статический анализ (golangci-lint)
+make obs-up    # Prometheus
 ```
 
 ## Линтер и форматирование

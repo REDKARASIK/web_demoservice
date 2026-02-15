@@ -20,3 +20,14 @@ brokers = ["redpanda:9092"]
 topic = "orders"
 group_id = "order-processor"
 dlq_topic = "orders_dlq"
+
+[telemetry]
+enabled = false
+service_name = "web_demoservice"
+otlp_endpoint = "localhost:4317"
+otlp_insecure = true
+sample_ratio = 1.0
+
+[metrics]
+enabled = true
+path = "/metrics"

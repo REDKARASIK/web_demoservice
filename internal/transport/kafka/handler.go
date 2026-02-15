@@ -7,8 +7,12 @@ import (
 	"log/slog"
 	"web_demoservice/internal/domain"
 	"web_demoservice/internal/infra/kafka"
+	"web_demoservice/internal/telemetry"
 
 	"github.com/twmb/franz-go/pkg/kgo"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type OrderService interface {
@@ -40,18 +44,33 @@ func (h *OrderHandler) Run(ctx context.Context) {
 		}
 		fetches := h.consumer.Fetch(ctx)
 		fetches.EachRecord(func(record *kgo.Record) {
+			recordCtx, span := otel.Tracer("kafka").Start(ctx, "kafka.consume")
+			span.SetAttributes(
+				attribute.String("messaging.system", "kafka"),
+				attribute.String("messaging.destination", record.Topic),
+				attribute.Int("messaging.kafka.partition", int(record.Partition)),
+				attribute.Int64("messaging.kafka.offset", record.Offset),
+			)
+			defer span.End()
+
 			var kafkaDTO OrderKafkaDTO
 			if err := json.Unmarshal(record.Value, &kafkaDTO); err != nil {
 				wrappedErr := fmt.Errorf("unmarshal kafka record: %w", err)
 				slog.Error("failed to unmarshal kafka record", slog.Any("error", wrappedErr))
-				h.sendToDLQ(ctx, record, wrappedErr)
+				span.RecordError(wrappedErr)
+				span.SetStatus(codes.Error, wrappedErr.Error())
+				telemetry.IncKafkaResult("invalid")
+				h.sendToDLQ(recordCtx, record, wrappedErr)
 				return
 			}
 
 			if err := kafkaDTO.Validate(); err != nil {
 				wrappedErr := fmt.Errorf("validate kafka dto: %w", err)
 				slog.Error("failed to validate kafka dto", slog.Any("error", wrappedErr))
-				h.sendToDLQ(ctx, record, wrappedErr)
+				span.RecordError(wrappedErr)
+				span.SetStatus(codes.Error, wrappedErr.Error())
+				telemetry.IncKafkaResult("invalid")
+				h.sendToDLQ(recordCtx, record, wrappedErr)
 				return
 			}
 
@@ -59,15 +78,24 @@ func (h *OrderHandler) Run(ctx context.Context) {
 			if err != nil {
 				wrappedErr := fmt.Errorf("map kafka dto to domain: %w", err)
 				slog.Error("failed to map kafka dto to domain", slog.Any("error", wrappedErr))
-				h.sendToDLQ(ctx, record, wrappedErr)
+				span.RecordError(wrappedErr)
+				span.SetStatus(codes.Error, wrappedErr.Error())
+				telemetry.IncKafkaResult("invalid")
+				h.sendToDLQ(recordCtx, record, wrappedErr)
 				return
 			}
 
-			if err := h.service.CreateOrder(ctx, order); err != nil {
+			if err := h.service.CreateOrder(recordCtx, order); err != nil {
 				wrappedErr := fmt.Errorf("save order from kafka: %w", err)
 				slog.Error("failed to save order from kafka", slog.Any("error", wrappedErr))
-				h.sendToDLQ(ctx, record, wrappedErr)
+				span.RecordError(wrappedErr)
+				span.SetStatus(codes.Error, wrappedErr.Error())
+				telemetry.IncKafkaResult("error")
+				h.sendToDLQ(recordCtx, record, wrappedErr)
+				return
 			}
+
+			telemetry.IncKafkaResult("ok")
 		})
 	}
 }
@@ -79,6 +107,7 @@ func (h *OrderHandler) sendToDLQ(ctx context.Context, record *kgo.Record, cause 
 	}
 
 	if err := h.dlq.Publish(ctx, record, cause); err != nil {
+		telemetry.IncKafkaDLQPublishFailure()
 		slog.Error("failed to publish to dlq", slog.Any("error", err))
 	}
 }
