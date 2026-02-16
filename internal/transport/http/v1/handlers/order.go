@@ -17,6 +17,10 @@ type OrderService interface {
 	GetOrder(ctx context.Context, id uuid.UUID) (*domain.OrderWithInformation, error)
 }
 
+type OrderHTTPHandler interface {
+	GetOrder(w http.ResponseWriter, r *http.Request)
+}
+
 type OrderHandler struct {
 	service OrderService
 }

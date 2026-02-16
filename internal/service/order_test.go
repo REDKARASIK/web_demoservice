@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 	"web_demoservice/internal/domain"
-	"web_demoservice/internal/interfaces"
 
 	"github.com/google/uuid"
 )
@@ -45,28 +44,28 @@ func (m *mockOrderRepo) GetAllLast24Hours(ctx context.Context) ([]domain.OrderWi
 }
 
 type mockCache struct {
-	getFn    func(key uuid.UUID) (*domain.OrderWithInformation, bool)
-	setFn    func(key uuid.UUID, value domain.OrderWithInformation)
+	getFn    func(ctx context.Context, key uuid.UUID) (*domain.OrderWithInformation, bool)
+	setFn    func(ctx context.Context, key uuid.UUID, value domain.OrderWithInformation)
 	getCalls int
 	setCalls int
 }
 
-func (m *mockCache) Set(key uuid.UUID, value domain.OrderWithInformation) {
+func (m *mockCache) Set(ctx context.Context, key uuid.UUID, value domain.OrderWithInformation) {
 	m.setCalls++
 	if m.setFn != nil {
-		m.setFn(key, value)
+		m.setFn(ctx, key, value)
 	}
 }
 
-func (m *mockCache) Get(key uuid.UUID) (*domain.OrderWithInformation, bool) {
+func (m *mockCache) Get(ctx context.Context, key uuid.UUID) (*domain.OrderWithInformation, bool) {
 	m.getCalls++
 	if m.getFn != nil {
-		return m.getFn(key)
+		return m.getFn(ctx, key)
 	}
 	return nil, false
 }
 
-var _ interfaces.Cache[uuid.UUID, domain.OrderWithInformation] = (*mockCache)(nil)
+var _ Cache = (*mockCache)(nil)
 
 func TestOrderService_CreateOrder_PropagatesError(t *testing.T) {
 	wantErr := errors.New("repo error")
@@ -97,7 +96,7 @@ func TestOrderService_GetOrder_FromCache(t *testing.T) {
 		},
 	}
 	cache := &mockCache{
-		getFn: func(key uuid.UUID) (*domain.OrderWithInformation, bool) {
+		getFn: func(ctx context.Context, key uuid.UUID) (*domain.OrderWithInformation, bool) {
 			return &order, true
 		},
 	}
@@ -128,10 +127,10 @@ func TestOrderService_GetOrder_FromRepo_SetsCache(t *testing.T) {
 		},
 	}
 	cache := &mockCache{
-		getFn: func(key uuid.UUID) (*domain.OrderWithInformation, bool) {
+		getFn: func(ctx context.Context, key uuid.UUID) (*domain.OrderWithInformation, bool) {
 			return nil, false
 		},
-		setFn: func(key uuid.UUID, value domain.OrderWithInformation) {
+		setFn: func(ctx context.Context, key uuid.UUID, value domain.OrderWithInformation) {
 			if key != id {
 				t.Fatalf("expected cache Set key %s, got %s", id, key)
 			}

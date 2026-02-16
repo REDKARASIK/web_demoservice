@@ -39,6 +39,20 @@ var (
 			Help: "Total number of DLQ publish failures.",
 		},
 	)
+	storageOpsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "storage_ops_total",
+			Help: "Total number of storage read/write operations.",
+		},
+		[]string{"store", "op", "result"},
+	)
+	repositoryUp = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "repository_up",
+			Help: "Repository availability status (1 = up, 0 = down).",
+		},
+		[]string{"repo"},
+	)
 )
 
 func init() {
@@ -47,6 +61,8 @@ func init() {
 		httpRequestDuration,
 		kafkaMessagesTotal,
 		kafkaDLQPublishFailuresTotal,
+		storageOpsTotal,
+		repositoryUp,
 	)
 }
 
@@ -81,6 +97,18 @@ func IncKafkaResult(result string) {
 
 func IncKafkaDLQPublishFailure() {
 	kafkaDLQPublishFailuresTotal.Inc()
+}
+
+func IncStorageOp(store, op, result string) {
+	storageOpsTotal.WithLabelValues(store, op, result).Inc()
+}
+
+func SetRepositoryUp(repo string, up bool) {
+	value := 0.0
+	if up {
+		value = 1.0
+	}
+	repositoryUp.WithLabelValues(repo).Set(value)
 }
 
 type statusRecorder struct {

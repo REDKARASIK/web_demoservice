@@ -30,7 +30,7 @@ func NewCache(ttl time.Duration) *Cache {
 	}
 }
 
-func (c *Cache) Set(id uuid.UUID, order domain.OrderWithInformation) {
+func (c *Cache) Set(ctx context.Context, id uuid.UUID, order domain.OrderWithInformation) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	entity := cacheEntity{
@@ -40,7 +40,7 @@ func (c *Cache) Set(id uuid.UUID, order domain.OrderWithInformation) {
 	c.cache[id] = entity
 }
 
-func (c *Cache) Get(id uuid.UUID) (*domain.OrderWithInformation, bool) {
+func (c *Cache) Get(ctx context.Context, id uuid.UUID) (*domain.OrderWithInformation, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	entity, ok := c.cache[id]

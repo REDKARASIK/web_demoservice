@@ -9,20 +9,31 @@ import (
 )
 
 type Producer struct {
-	client *kgo.Client
+	client recordProducer
 	topic  string
 }
 
-func NewProducer(brokers []string, topic string) (*Producer, error) {
-	if topic == "" {
-		return nil, fmt.Errorf("dlq topic is required")
-	}
+type recordProducer interface {
+	Produce(ctx context.Context, record *kgo.Record, fn func(*kgo.Record, error))
+}
 
+func NewProducer(brokers []string, topic string) (*Producer, error) {
 	client, err := kgo.NewClient(
 		kgo.SeedBrokers(brokers...),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("new client: %w", err)
+	}
+
+	return newProducerWithClient(client, topic)
+}
+
+func newProducerWithClient(client recordProducer, topic string) (*Producer, error) {
+	if topic == "" {
+		return nil, fmt.Errorf("dlq topic is required")
+	}
+	if client == nil {
+		return nil, fmt.Errorf("producer client is required")
 	}
 
 	return &Producer{client: client, topic: topic}, nil

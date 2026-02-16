@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 type OrderService interface {
@@ -44,7 +45,12 @@ func (h *OrderHandler) Run(ctx context.Context) {
 		}
 		fetches := h.consumer.Fetch(ctx)
 		fetches.EachRecord(func(record *kgo.Record) {
-			recordCtx, span := otel.Tracer("kafka").Start(ctx, "kafka.consume")
+			carrier := propagation.HeaderCarrier{}
+			for _, header := range record.Headers {
+				carrier.Set(header.Key, string(header.Value))
+			}
+			parentCtx := otel.GetTextMapPropagator().Extract(ctx, carrier)
+			recordCtx, span := otel.Tracer("kafka").Start(parentCtx, "kafka.consume")
 			span.SetAttributes(
 				attribute.String("messaging.system", "kafka"),
 				attribute.String("messaging.destination", record.Topic),

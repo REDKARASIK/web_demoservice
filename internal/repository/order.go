@@ -142,11 +142,11 @@ func (r *OrderPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*d
 		FROM orders.orders 
 		WHERE order_id = $1
 	`
-	var order domain.OrderWithInformation
+	var ord domain.OrderWithInformation
 	err := r.db.QueryRow(ctx, qGetOrder, id).Scan(
-		&order.ID, &order.TrackNumber, &order.Entry, &order.Locale,
-		&order.InternalSignature, &order.CustomerID, &order.DeliveryService,
-		&order.ShardKey, &order.SmID, &order.DateCreated, &order.OofShard,
+		&ord.ID, &ord.TrackNumber, &ord.Entry, &ord.Locale,
+		&ord.InternalSignature, &ord.CustomerID, &ord.DeliveryService,
+		&ord.ShardKey, &ord.SmID, &ord.DateCreated, &ord.OofShard,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -162,8 +162,8 @@ func (r *OrderPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*d
 		WHERE order_id = $1
 	`
 	err = r.db.QueryRow(ctx, qGetDelivery, id).Scan(
-		&order.Delivery.Name, &order.Delivery.Phone, &order.Delivery.Zip,
-		&order.Delivery.City, &order.Delivery.Address, &order.Delivery.Region, &order.Delivery.Email,
+		&ord.Delivery.Name, &ord.Delivery.Phone, &ord.Delivery.Zip,
+		&ord.Delivery.City, &ord.Delivery.Address, &ord.Delivery.Region, &ord.Delivery.Email,
 	)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("query delivery: %w", err)
@@ -179,10 +179,10 @@ func (r *OrderPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*d
 		WHERE p.order_id = $1
 	`
 	err = r.db.QueryRow(ctx, qGetPayment, id).Scan(
-		&order.Payment.Transaction, &order.Payment.RequestID, &order.Payment.Currency,
-		&order.Payment.Provider, &order.Payment.Amount, &order.Payment.PaymentDt,
-		&order.Payment.DeliveryCost, &order.Payment.GoodsTotal, &order.Payment.CustomFee,
-		&order.Payment.Bank.ID, &order.Payment.Bank.Name,
+		&ord.Payment.Transaction, &ord.Payment.RequestID, &ord.Payment.Currency,
+		&ord.Payment.Provider, &ord.Payment.Amount, &ord.Payment.PaymentDt,
+		&ord.Payment.DeliveryCost, &ord.Payment.GoodsTotal, &ord.Payment.CustomFee,
+		&ord.Payment.Bank.ID, &ord.Payment.Bank.Name,
 	)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("query payment: %w", err)
@@ -211,10 +211,10 @@ func (r *OrderPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*d
 		if err != nil {
 			return nil, fmt.Errorf("scan item: %w", err)
 		}
-		order.Items = append(order.Items, item)
+		ord.Items = append(ord.Items, item)
 	}
 
-	return &order, nil
+	return &ord, nil
 }
 
 func (r *OrderPostgresRepository) GetAllLast24Hours(ctx context.Context) ([]domain.OrderWithInformation, error) {
@@ -251,4 +251,12 @@ func (r *OrderPostgresRepository) GetAllLast24Hours(ctx context.Context) ([]doma
 	}
 
 	return orders, nil
+}
+
+func (r *OrderPostgresRepository) Ping(ctx context.Context) error {
+	if err := r.db.Ping(ctx); err != nil {
+		return fmt.Errorf("ping db: %w", err)
+	}
+
+	return nil
 }

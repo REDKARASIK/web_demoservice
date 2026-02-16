@@ -1,6 +1,6 @@
 # 📦 Web Demoservice
 
-![Go](https://img.shields.io/badge/Go-1.24-blue?logo=go)
+![Go](https://img.shields.io/badge/Go-1.25-blue?logo=go)
 ![Docker](https://img.shields.io/badge/Docker-✔-2496ED?logo=docker)
 ![Postgres](https://img.shields.io/badge/Postgres-17-4169E1?logo=postgresql)
 ![Kafka](https://img.shields.io/badge/Kafka%2FRedpanda-✔-D21F3C?logo=apache-kafka)
@@ -63,7 +63,7 @@
 - Генератор тестовых сообщений (валидных и невалидных) `cmd/producer`
 - HTTP API для получения заказа
 - Простой фронтенд (`web/index.html`)
-- Трейсы (OpenTelemetry) и метрики (Prometheus `/metrics`)
+- Трейсы и логи через декораторы на слоях service/handlers/repository/cache; метрики (Prometheus `/metrics`)
 
 ---
 
@@ -97,6 +97,10 @@ go run ./cmd/producer --brokers=localhost:19092 --topic=orders --count=100 --inv
 и уже настроен на скрейп `app:8080/metrics`. Пример запроса в UI:
 `http_requests_total`.
 
+Дополнительные метрики:
+- `storage_ops_total{store,op,result}` — чтение/запись по `cache` и `db`.
+- `repository_up{repo}` — доступность репозитория (ping).
+
 ### Трейсы (OpenTelemetry)
 Включаются через конфиг:
 ```toml
@@ -108,6 +112,11 @@ otlp_insecure = true
 sample_ratio = 1.0
 ```
 Если `enabled=false`, трейсинг отключён.
+Контекст из Kafka прокидывается через headers и продолжается в service/repository/cache
+через декораторы.
+
+### Логи
+HTTP хэндлеры и сервис обёрнуты логирующими декораторами.
 
 ## Тесты
 ```bash
@@ -118,6 +127,7 @@ go test ./...
 TEST_DB_DSN="postgres://demoservice:demoservice_pass@localhost:5432/demoservice_db?sslmode=disable" \
 go test -tags=integration ./internal/repository -run TestOrderPostgresRepository_CreateAndGet
 ```
+Юнит-тесты покрывают кэш и Kafka producer.
 
 ## Makefile
 Короткие команды-обертки над `docker compose`:

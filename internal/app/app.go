@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 	cache2 "web_demoservice/internal/cache"
 	"web_demoservice/internal/config"
 	"web_demoservice/internal/infra/kafka"
@@ -46,19 +47,26 @@ func NewApp(ctx context.Context, config *config.Config) (*App, error) {
 	// Cache
 	cache := cache2.NewCache(config.HTTP.CacheTTL)
 	cache.StartDeleting(ctx)
+	cacheObs := telemetry.WrapCache(cache)
 
 	// repo
 	orderRepo := repository.NewOrderPostgresRepository(pool)
+	repoObs := telemetry.WrapOrderRepository(orderRepo)
+	if config.Metrics.Enabled {
+		startRepositoryPing(ctx, repoObs, config.DB.HealthCheckPeriod)
+	}
 
 	// service
-	orderService := service.NewOrderService(orderRepo, cache)
-	if err = orderService.WarmUp(ctx); err != nil {
+	orderService := service.NewOrderService(repoObs, cacheObs)
+	orderServiceObs := telemetry.WrapOrderService(orderService)
+	if err = orderServiceObs.WarmUp(ctx); err != nil {
 		slog.Error("failed to warm up cache", slog.Any("error", err))
 	}
 
 	// handler
-	orderHandler := handlers.NewOrderHandler(orderService)
-	consumerHandler := kafka2.NewOrderHandler(consumer, dlqProducer, orderService)
+	orderHandler := handlers.NewOrderHandler(orderServiceObs)
+	orderHandlerObs := handlers.NewLoggingOrderHandler(orderHandler)
+	consumerHandler := kafka2.NewOrderHandler(consumer, dlqProducer, orderServiceObs)
 	go consumerHandler.Run(ctx)
 
 	// mux register
@@ -76,7 +84,7 @@ func NewApp(ctx context.Context, config *config.Config) (*App, error) {
 	}
 	apiRouter := router.PathPrefix("/api/v1").Subrouter()
 	apiRouter.Use(middleware.PanicCover)
-	routs.RegisterOrderRoutes(apiRouter, orderHandler)
+	routs.RegisterOrderRoutes(apiRouter, orderHandlerObs)
 
 	fileServer := http.FileServer(http.Dir("./web"))
 	router.PathPrefix("/").Handler(fileServer)
@@ -95,4 +103,34 @@ func NewApp(ctx context.Context, config *config.Config) (*App, error) {
 	return &App{
 		Router: &handler,
 	}, nil
+}
+
+type repositoryPinger interface {
+	Ping(ctx context.Context) error
+}
+
+func startRepositoryPing(ctx context.Context, repo repositoryPinger, interval time.Duration) {
+	if interval <= 0 {
+		interval = time.Minute
+	}
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		if err := repo.Ping(ctx); err != nil {
+			slog.Warn("repository ping failed", slog.Any("error", err))
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := repo.Ping(ctx); err != nil {
+					slog.Warn("repository ping failed", slog.Any("error", err))
+				}
+			}
+		}
+	}()
 }
